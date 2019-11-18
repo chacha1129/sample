@@ -1,35 +1,21 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>ホームページのタイトル</title>
-    <style>
-      body{
-        margin: 0 auto;
-        padding: 150px;
-        width: 25%;
-        background: #fbfbfa;
-      }
-      h1{ color: #545454; font-size: 20px;}
-      a{
-        color: #545454;
-        display: block;
-      }
-      a:hover{
-        text-decoration: none;
-      }
-    </style>
-  </head>
-  <body>
+<?php
 
-      <h1>マイページ</h1>
-      <section>
-        <p>
-          あなたのemailは info@webukatu.com です。<br />
-          あなたのpassは password です。
-        </p>
-        <a href="index.php">ユーザー登録画面へ</a>
-      </section>
 
-  </body>
-</html>
+//バリデーションクラス
+class Valid(){
+
+  public static function controller(){
+
+  }
+
+  public static function do_valid(){
+    //post送信されていた場合
+    if(!empty($_POST['email'])){
+      if(!empty($_POST['pass'])){
+        if(!empty($_POST['pass_retype']))
+      }
+      return
+    }
+  }
+
+}

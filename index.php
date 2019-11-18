@@ -1,321 +1,178 @@
+<?php
 
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="utf-8">
-    <title>ポートフォリオ</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="style.css">
+error_reporting(E_ALL); //E_STRICTレベル以外のエラーを報告する
+ini_set('display_errors','On'); //画面にエラーを表示させるか
 
-  <style>
-  body{
-    color: #444;
-    margin: 0;
-    padding: 0;
-    line-height: 150%;
+//1.post送信されていた場合
+if(!empty($_POST)){
+
+  //エラーメッセージを定数に設定
+  define('MSG01','入力必須です');
+  define('MSG02', 'Emailの形式で入力してください');
+  define('MSG03','パスワード（再入力）が合っていません');
+  define('MSG04','半角英数字のみご利用いただけます');
+  define('MSG05','6文字以上で入力してください');
+
+
+  //配列$err_msgを用意
+  $err_msg = array();
+
+  //2.フォームが入力されていない場合
+  if(empty($_POST['email'])){
+
+    $err_msg['email'] = MSG01;
+
   }
-  /*トップバナー*/
-  img{
-    width:100%;
+  if(empty($_POST['pass'])){
+
+    $err_msg['pass'] = MSG01;
+
   }
-  .main-image{
-    position:relative;
+  if(empty($_POST['pass_retype'])){
+
+    $err_msg['pass_retype'] = MSG01;
+
   }
 
-  .mainimage p{
-    position:absolute;
-    width: 100%;
-      left: 0;
-      top: calc(50% - 25px);
-      text-align: center;
-      color: darkblue;
-      font-weight: bold;
-      font-size: 50px;
-      line-height: 50px;
-  }
-  /*ヘッダー部分*/
-  header{
-    margin-bottom: 15px;
-    height: 200px;
-    width: 100%;
+  if(empty($err_msg)){
 
+    //変数にユーザー情報を代入
+    $email = $_POST['email'];
+    $pass = $_POST['pass'];
+    $pass_re = $_POST['pass_retype'];
 
+    //3.emailの形式でない場合
+    if(!preg_match("/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/", $email)){
+      $err_msg['email'] = MSG02;
     }
 
+    //4.パスワードとパスワード再入力が合っていない場合
+    if($pass !== $pass_re){
+      $err_msg['pass'] = MSG03;
+    }
 
-  header h1{
-    font-size: 20px;
-    font-family: 'Montserrat', sans-serif;
-    margin: 15px;
-    padding: 20px;
-    text-align: center;
-    float: left;
-    height: 150px;
-    width: 150px;
-    background: #c0c0c0;
-    border-radius: 100px;
-    -webkit-border-radius: 100px;
-    -moz-border-radius: 100px;
-    line-height: 150px;
-  }
-  header h1 a{
-    color: #333;
-    text-decoration: none;
-  }
+    if(empty($err_msg)){
 
-  /*ナビゲーション*/
-  #top-nav{
-    float: right;
-    width: 500px;
-    height: 150px;
-    position: relative;
-  }
-  nav a{
-    padding: 10px 15px;
-    color: #444;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: bold;
-  }
-  nav a:hover{
-    text-decoration: underline;
-  }
-  #top-nav ul{
-    height: 40px;
-    width: 450px;
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    list-style: none;
-  }
-  #top-nav ul li{
-    float: left;
+      //5.パスワードとパスワード再入力が半角英数字でない場合
+      if(!preg_match("/^[a-zA-Z0-9]+$/", $pass)){
+        $err_msg['pass'] = MSG04;
 
-  }
+      }elseif(mb_strlen($pass) < 6){
+      //6.パスワードとパスワード再入力が6文字以上でない場合
 
-  /*コンテンツ横幅*/
-  .site-width{
-    width: 980px;
-    margin: 0 auto;
-  }
+        $err_msg['pass'] = MSG05;
+      }
 
-  section h1.title{
-    font-family: 'Montserrat', sans-serif;
-    text-align: center;
-  }
-  #about , #merit , #recruit{
-    margin-top: 80px;
-    margin-bottom: 80px;
-  }
+      if(empty($err_msg)){
 
-  /*パネル*/
-  .panel{
-    background: #f6f5f5;
-    border: 1px solid #eee;
-    border-radius: 3px;
-    -webkit-border-radius: 3px;
-    -moz-border-radius: 3px;
-    margin: 0 15px;
-    padding: 15px;
-    width: 30%;
-    float: left;
-    box-sizing: border-box;
-    min-height: 380px;
-  }
-  .panel h2{
-    color: #333;
-    text-align: center;
-  }
-　
+        //DBへの接続準備
+        $dsn = 'mysql:dbname=php_sample01;host=localhost;charset=utf8';
+        $user = 'root';
+        $password = 'root';
+        $options = array(
+                // SQL実行失敗時に例外をスロー
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                // デフォルトフェッチモードを連想配列形式に設定
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                // バッファードクエリを使う(一度に結果セットをすべて取得し、サーバー負荷を軽減)
+                // SELECTで得た結果に対してもrowCountメソッドを使えるようにする
+                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+            );
 
-  /*テーブル*/
-  table{
-    background: rgb(246,246,246);
-    border: 1px solid #eee;
-    width: 100%;
-    border-radius: 3px;
-    -webkit-border-radius: 3px;
-    -moz-border-radius: 3px;
-    padding: 10px;
-    margin: 10px 0;
-    text-align: left;
-    font-size: 14px;
-  }
-  th,td{
-    padding: 5px 0;
-    border-bottom: 1px dotted #ccc;
-  }
-  table thead tr th{
-    color: #333;
-    padding-bottom: 15px;
-  }
-  table thead tr th.color1{
-    color: rgb(230,140,31);
-    font-size: 18px;
-  }
-  table tbody th{
-    color: rgb(142,130,113);
-  }
+        // PDOオブジェクト生成（DBへ接続）
+        $dbh = new PDO($dsn, $user, $password, $options);
 
-  #merit{
-    overflow: hidden;
-  }
+        //SQL文（クエリー作成）
+        $stmt = $dbh->prepare('INSERT INTO user (email,pass,login_time) VALUES (:email,:pass,:login_time)');
 
-  /*フッター*/
-  footer{
-    font-size: 12px;
-    padding: 15px;
-    background: #333;
-    text-align: center;
-    color: #f6f5f5;
-  }
-  footer a{
-    color: #f6f5f5;
-  }
+        //プレースホルダに値をセットし、SQL文を実行
+        $stmt->execute(array(':email' => $email, ':pass' => $pass, ':login_time' => date('Y-m-d H:i:s')));
 
-  /*contact*/
-  #contact{
-    margin-bottom: 150px;
-  }
+        header("Location:mypage.php"); //マイページへ
+      }
 
-  /*フォーム*/
-  form{
-    width: 50%;
-    margin: 0 auto;
+    }
   }
-  input,textarea{
-    font-size: 18px;
-    margin-bottom: 15px;
-  }
-  input[type="text"]{
-    width: 100%;
-    height: 60px;
-    border: none;
-    background: #f6f5f5;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-  textarea{
-    width: 100%;
-    height: 400px;
-    border: none;
-    background: #f6f5f5;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-  input[type="submit"]{
-    background: #333;
-    border: none;
-    padding: 15px 30px;
-    color: white;
-    float: right;
-  }
-  </style>
-    <link href='http://fonts.googleapis.com/css?family=Montserrat:400,700' rel='stylesheet' type='text/css'>
-　
+}
+
+?>
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>ホームページのタイトル</title>
+    <style>
+      body{
+        margin: 0 auto;
+        padding: 150px;
+        width: 25%;
+        background-color:grey;
+      }
+      h1{ color: #545454; font-size: 20px;}
+      form{
+        overflow: hidden;
+      }
+      input[type="text"]{
+        color: #545454;
+        height: 60px;
+        width: 100%;
+        padding: 5px 10px;
+        font-size: 16px;
+        display: block;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+      }
+      input[type="password"]{
+        color: #545454;
+        height: 60px;
+        width: 100%;
+        padding: 5px 10px;
+        font-size: 16px;
+        display: block;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+      }
+      input[type="submit"]{
+        border: none;
+        padding: 15px 30px;
+        margin-bottom: 15px;
+        background: #3d3938;
+        color: white;
+        float: right;
+      }
+      input[type="submit"]:hover{
+        background: #111;
+        cursor: pointer;
+      }
+      a{
+        color: #545454;
+        display: block;
+      }
+      a:hover{
+        text-decoration: none;
+      }
+      .err_msg{
+        color: #ff4d4b;
+      }
+    </style>
   </head>
-
   <body>
 
-    <!-- メニュー -->
-    <header class="site-width">
+      <h1>ユーザー登録</h1>
+      <form method="post"　action="mypage.php">
 
-      <h1><a href="index.php">HOME</a></h1>
-      <nav id="top-nav">
-      <div class="g-nav">
-        <ul class="nav-nemu">
-          <li><a href="index.php">HOME</a></li>
-          <li><a href="#about">ABOUT</a></li>
-          <li><a href="#merit">PLOFILE</a></li>
-          <li><a href="#recruit">INFO</a></li>
-          <li><a href="mypage.php">CONTACT</a></li>
-        </ul>
-      </div>
-      </nav>
+        <span class="err_msg"><?php if(!empty($err_msg['email'])) echo $err_msg['email']; ?></span>
+        <input type="text" name="email" placeholder="email" value="<?php if(!empty($_POST['email'])) echo $_POST['email'];?>">
 
-    </header>
+        <span class="err_msg"><?php if(!empty($err_msg['pass'])) echo $err_msg['pass']; ?></span>
+        <input type="password" name="pass" placeholder="パスワード" value="<?php if(!empty($_POST['pass'])) echo $_POST['pass'];?>">
 
-    <p id="akakusuru">
+        <span class="err_msg"><?php if(!empty($err_msg['pass_retype'])) echo $err_msg['pass_retype']; ?></span>
+        <input type="password" name="pass_retype" placeholder="パスワード（再入力）" value="<?php if(!empty($_POST['pass_retype'])) echo $_POST['pass_retype'];?>">
 
-    </p>
-
-
-    <!-- メインコンテンツ -->
-
-    <div id="main">
-
-      <!-- トップバナー -->
-
-      <main class="mainimage">
-      <img src="image.jpg" id="top-banar">
-  　　<p>MYportfolio</p>
-
-  　　</main>
-
-      <!-- ABOUT -->
-      <section id="about" class="site-width">
-        <h1 class="title">ABOUT</h1>
-        <p>
-          私は現在大学生でプログラミングの学習をしています。現在はフロント側の言語を中心に学習をしていますが<br />
-          最近ではバックエンドの方にも興味を持っており、PHPを学習しています。将来的にはフルスタックのエンジニアを目指しています。
-
-        </p>
-      </section>
-
-      <!-- MERIT -->
-      <section id="merit" class="site-width">
-        <h1 class="title">Information</h1>
-        <section class="panel">
-          <h2>スキル</h2>
-          <p>    <br />
-              <br />
-            <br />
-          　　　<br />
-          </p>
-
-        </section>
-        <section class="panel">
-          <h2>WORKS</h2>
-          <p>
-
-          </p>
-        </section>
-        <section class="panel">
-          <h2>趣味
-            </h2>
-          <p>
-
-          </p>
-        </section>
-      </section>
-
-      <!-- RECRUIT -->
-      <section id="recruit" class="site-width">
-        <table>
-          <thead>
-            <tr><th class="color1">PROFILE</th><th></th></tr>
-          </thead>
-          <tbody>
-
-            <tr>　<th>スキル</th>　<td>Html&css,JavaScript,jquery,php　</td>　</tr>
-
-
-
-
-            <tr>　<th>出身</th>　<td>東京　</td>　</tr>
-            <tr>　<th>趣味</th>　<td>映画鑑賞、ゲーム、筋トレ、basketball　</td>　</tr>
-            <tr>　<th>大学</th>　<td>亜細亜大学　</td>　</tr>
-
-          </tbody>
-        </table>
-      </section>
-
-    </div>
-
-    <!-- footer -->
-    <footer>
-
-    </footer>
-
+        <input type="submit" value="送信">
+      </form>
+      <a href="sampl.php">マイページへ</a>
   </body>
-  </html>
+</html>
